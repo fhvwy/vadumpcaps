@@ -314,6 +314,7 @@ static struct {
 #undef C
 };
 
+#if LIBVA(2, 1, 0)
 static struct {
     VAProcTotalColorCorrectionType type;
     const char *name;
@@ -328,6 +329,7 @@ static struct {
     C(Yellow),
 #undef C
 };
+#endif
 
 static struct {
     VAProcColorStandardType type;
