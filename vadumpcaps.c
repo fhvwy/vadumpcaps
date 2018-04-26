@@ -50,6 +50,7 @@
 #define LIBVA_1_8_0 VA_CHECK_VERSION(0, 40, 0)
 #define LIBVA_2_0_0 VA_CHECK_VERSION(1,  0, 0)
 #define LIBVA_2_1_0 VA_CHECK_VERSION(1,  1, 0)
+#define LIBVA_2_2_0 VA_CHECK_VERSION(1,  2, 0)
 #define LIBVA(major, minor, micro) \
        (LIBVA_ ## major ## _ ## minor ## _ ## micro)
 
@@ -240,6 +241,17 @@ static struct {
     P(VP9Profile1,         "VP9 profile 1"),
     P(VP9Profile2,         "VP9 profile 2"),
     P(VP9Profile3,         "VP9 profile 3"),
+#endif
+#if LIBVA(2, 2, 0)
+    P(HEVCMain12,          "H.265 / MPEG-H part 2 (HEVC) RExt Main 12 Profile"),
+    P(HEVCMain422_10,      "H.265 / MPEG-H part 2 (HEVC) RExt Main 4:2:2 10 Profile"),
+    P(HEVCMain422_12,      "H.265 / MPEG-H part 2 (HEVC) RExt Main 4:2:2 12 Profile"),
+    P(HEVCMain444,         "H.265 / MPEG-H part 2 (HEVC) RExt Main 4:4:4 Profile"),
+    P(HEVCMain444_10,      "H.265 / MPEG-H part 2 (HEVC) RExt Main 4:4:4 10 Profile"),
+    P(HEVCMain444_12,      "H.265 / MPEG-H part 2 (HEVC) RExt Main 4:4:4 12 Profile"),
+    P(HEVCSccMain,         "H.265 / MPEG-H part 2 (HEVC) SCC Screen-Extended Main Profile"),
+    P(HEVCSccMain10,       "H.265 / MPEG-H part 2 (HEVC) SCC Screen-Extended Main 10 Profile"),
+    P(HEVCSccMain444,      "H.265 / MPEG-H part 2 (HEVC) SCC Screen-Extended Main 4:4:4 Profile"),
 #endif
 #undef P
 };
