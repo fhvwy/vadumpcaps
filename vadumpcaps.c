@@ -534,6 +534,10 @@ static void dump_config_attributes(VADisplay display,
                 AV(ENC_SLICE_STRUCTURE, ARBITRARY_ROWS);
                 AV(ENC_SLICE_STRUCTURE, POWER_OF_TWO_ROWS);
                 AV(ENC_SLICE_STRUCTURE, ARBITRARY_MACROBLOCKS);
+#if LIBVA(2, 0, 0)
+                AV(ENC_SLICE_STRUCTURE, EQUAL_ROWS);
+                AV(ENC_SLICE_STRUCTURE, MAX_SLICE_SIZE);
+#endif
                 end_array();
             }
             break;
