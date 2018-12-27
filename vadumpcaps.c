@@ -52,6 +52,7 @@
 #define LIBVA_2_1_0 VA_CHECK_VERSION(1,  1, 0)
 #define LIBVA_2_2_0 VA_CHECK_VERSION(1,  2, 0)
 #define LIBVA_2_3_0 VA_CHECK_VERSION(1,  3, 0)
+#define LIBVA_2_4_0 VA_CHECK_VERSION(1,  4, 0)
 #define LIBVA(major, minor, micro) \
        (LIBVA_ ## major ## _ ## minor ## _ ## micro)
 
@@ -307,6 +308,9 @@ static struct {
 #if LIBVA(2, 3, 0)
     F(HVSNoiseReduction),
 #endif
+#if LIBVA(2, 4, 0)
+    F(HighDynamicRangeToneMapping),
+#endif
 #undef F
 };
 
@@ -411,6 +415,30 @@ static struct {
     M(NONE),
     M(HORIZONTAL),
     M(VERTICAL),
+#undef M
+};
+#endif
+
+#if LIBVA(2, 4, 0)
+static struct {
+    int type;
+    const char *name;
+} hdr_metadata_types[] = {
+#define H(name) { VAProcHighDynamicRangeMetadata ## name, #name }
+    H(None),
+    H(HDR10),
+#undef H
+};
+
+static struct {
+    int type;
+    const char *name;
+} tone_mapping_types[] = {
+#define M(name) { VA_TONE_MAPPING_ ## name, #name }
+    M(HDR_TO_HDR),
+    M(HDR_TO_SDR),
+    M(HDR_TO_EDR),
+    M(SDR_TO_HDR),
 #undef M
 };
 #endif
@@ -1048,6 +1076,47 @@ static void dump_filter_caps(VADisplay display, unsigned int rt_format)
         case VAProcFilterHVSNoiseReduction:
             {
                 // No caps (querying default caps isn't allowed either).
+            }
+            break;
+#endif
+#if LIBVA(2, 4, 0)
+        case VAProcFilterHighDynamicRangeToneMapping:
+            {
+                VAProcFilterCapHighDynamicRange
+                    hdr[VAProcHighDynamicRangeMetadataTypeCount];
+                unsigned int hdr_count = ARRAY_LENGTH(hdr);
+                memset(&hdr, 0, sizeof(hdr));
+
+                vas = vaQueryVideoProcFilterCaps(display, context,
+                                                 VAProcFilterHighDynamicRangeToneMapping,
+                                                 &hdr, &hdr_count);
+                CHECK_VAS("Failed to query HDR tone mapping caps");
+
+                start_array("types");
+
+                for (j = 0; j < hdr_count; j++) {
+                    for (k = 0; k < ARRAY_LENGTH(hdr_metadata_types); k++) {
+                        if (hdr[j].metadata_type == hdr_metadata_types[k].type)
+                            break;
+                    }
+
+                    start_object(NULL);
+
+                    print_integer("type", hdr[j].metadata_type);
+                    if (k < ARRAY_LENGTH(hdr_metadata_types))
+                        print_string("name", hdr_metadata_types[k].name);
+
+                    start_array("tone_mapping");
+                    for (k = 0; k < ARRAY_LENGTH(tone_mapping_types); k++) {
+                        if (hdr[j].caps_flag & tone_mapping_types[k].type)
+                            print_string(NULL, tone_mapping_types[k].name);
+                    }
+                    end_array();
+
+                    end_object();
+                }
+
+                end_array();
             }
             break;
 #endif
