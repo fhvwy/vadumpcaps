@@ -75,6 +75,21 @@ static void error_vas(VAStatus vas, const char *format, ...)
     fprintf(stderr, ": %d (%s)\n", vas, vaErrorStr(vas));
 }
 
+enum {
+    DUMP_PROFILES,
+    DUMP_ENTRYPOINTS,
+    DUMP_ATTRIBUTES,
+    DUMP_SURFACE_FORMATS,
+    DUMP_FILTERS,
+    DUMP_FILTER_CAPS,
+    DUMP_PIPELINE_CAPS,
+    DUMP_IMAGE_FORMATS,
+    DUMP_SUBPICTURE_FORMATS,
+    DUMP_MAX,
+};
+static int dump_mask;
+#define DUMP(name) (dump_mask & (1 << DUMP_ ## name))
+
 static int indent_depth  = 0;
 static int indent_size   = 4;
 static bool pretty_print = true;
@@ -928,10 +943,187 @@ static void dump_colour_standards(VAProcColorStandardType *types, int num)
     }
 }
 
-static void dump_filter_caps(VADisplay display, unsigned int rt_format)
+static void dump_filter_caps(VADisplay display, VAContextID context,
+                             VAProcFilterType filter)
 {
     VAStatus vas;
-    int i, j, k;
+    int j, k;
+
+    switch (filter) {
+    case VAProcFilterDeinterlacing:
+        {
+            VAProcFilterCapDeinterlacing deint[VAProcDeinterlacingCount];
+            unsigned int deint_count = ARRAY_LENGTH(deint);
+            memset(&deint, 0, sizeof(deint));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterDeinterlacing,
+                                             &deint, &deint_count);
+            CHECK_VAS("Failed to query deinterlacing caps");
+
+            start_array("types");
+
+            for (j = 0; j < deint_count; j++) {
+                for (k = 0; k < ARRAY_LENGTH(deinterlacer_types); k++) {
+                    if (deint[j].type == deinterlacer_types[k].type)
+                        break;
+                }
+
+                start_object(NULL);
+
+                print_integer("type", deint[j].type);
+                if (k < ARRAY_LENGTH(deinterlacer_types))
+                    print_string("name", deinterlacer_types[k].name);
+
+                end_object();
+            }
+
+            end_array();
+        }
+        break;
+    case VAProcFilterColorBalance:
+        {
+            VAProcFilterCapColorBalance colour[VAProcColorBalanceCount];
+            unsigned int colour_count = ARRAY_LENGTH(colour);
+            memset(&colour, 0, sizeof(colour));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterColorBalance,
+                                             &colour, &colour_count);
+            CHECK_VAS("Failed to query colour balance caps");
+
+            start_array("types");
+
+            for (j = 0; j < colour_count; j++) {
+                for (k = 0; k < ARRAY_LENGTH(colour_balance_types); k++) {
+                    if (colour[j].type == colour_balance_types[k].type)
+                        break;
+                }
+
+                start_object(NULL);
+
+                print_integer("type", colour[j].type);
+                if (k < ARRAY_LENGTH(colour_balance_types))
+                    print_string("name", colour_balance_types[k].name);
+
+                print_double("min_value",     colour[j].range.min_value);
+                print_double("max_value",     colour[j].range.max_value);
+                print_double("default_value", colour[j].range.default_value);
+                print_double("step",          colour[j].range.step);
+
+                end_object();
+            }
+
+            end_array();
+        }
+        break;
+#if LIBVA(2, 1, 0)
+    case VAProcFilterTotalColorCorrection:
+        {
+            VAProcFilterCapTotalColorCorrection
+                colour[VAProcTotalColorCorrectionCount];
+            unsigned int colour_count = ARRAY_LENGTH(colour);
+            memset(&colour, 0, sizeof(colour));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterTotalColorCorrection,
+                                             &colour, &colour_count);
+            CHECK_VAS("Failed to query total colour correction caps");
+
+            for (j = 0; j < colour_count; j++) {
+                for (k = 0; k < ARRAY_LENGTH(total_colour_correction_types); k++) {
+                    if (colour[j].type == total_colour_correction_types[k].type)
+                        break;
+                }
+
+                start_object(NULL);
+
+                print_integer("type", colour[j].type);
+                if (k < ARRAY_LENGTH(total_colour_correction_types))
+                    print_string("name", total_colour_correction_types[k].name);
+
+                print_double("min_value",     colour[j].range.min_value);
+                print_double("max_value",     colour[j].range.max_value);
+                print_double("default_value", colour[j].range.default_value);
+                print_double("step",          colour[j].range.step);
+
+                end_object();
+            }
+        }
+        break;
+#endif
+#if LIBVA(2, 3, 0)
+    case VAProcFilterHVSNoiseReduction:
+        {
+            // No caps (querying default caps isn't allowed either).
+        }
+        break;
+#endif
+#if LIBVA(2, 4, 0)
+    case VAProcFilterHighDynamicRangeToneMapping:
+        {
+            VAProcFilterCapHighDynamicRange
+                hdr[VAProcHighDynamicRangeMetadataTypeCount];
+            unsigned int hdr_count = ARRAY_LENGTH(hdr);
+            memset(&hdr, 0, sizeof(hdr));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterHighDynamicRangeToneMapping,
+                                             &hdr, &hdr_count);
+            CHECK_VAS("Failed to query HDR tone mapping caps");
+
+            start_array("types");
+
+            for (j = 0; j < hdr_count; j++) {
+                for (k = 0; k < ARRAY_LENGTH(hdr_metadata_types); k++) {
+                    if (hdr[j].metadata_type == hdr_metadata_types[k].type)
+                        break;
+                }
+
+                start_object(NULL);
+
+                print_integer("type", hdr[j].metadata_type);
+                if (k < ARRAY_LENGTH(hdr_metadata_types))
+                    print_string("name", hdr_metadata_types[k].name);
+
+                start_array("tone_mapping");
+                for (k = 0; k < ARRAY_LENGTH(tone_mapping_types); k++) {
+                    if (hdr[j].caps_flag & tone_mapping_types[k].type)
+                        print_string(NULL, tone_mapping_types[k].name);
+                }
+                end_array();
+
+                end_object();
+            }
+
+            end_array();
+        }
+        break;
+#endif
+    default:
+        {
+            VAProcFilterCap cap;
+            unsigned int cap_count = 1;
+            memset(&cap, 0, sizeof(cap));
+
+            vas = vaQueryVideoProcFilterCaps(display, context, filter,
+                                             &cap, &cap_count);
+            CHECK_VAS("Failed to query filter caps");
+
+            if (cap_count > 0) {
+                print_double("min_value",     cap.range.min_value);
+                print_double("max_value",     cap.range.max_value);
+                print_double("default_value", cap.range.default_value);
+                print_double("step",          cap.range.step);
+            }
+        }
+    }
+}
+
+static void dump_filters(VADisplay display, unsigned int rt_format)
+{
+    VAStatus vas;
+    int i, j;
 
     VAConfigAttrib attr_rt_format = {
         .type  = VAConfigAttribRTFormat,
@@ -969,254 +1161,88 @@ static void dump_filter_caps(VADisplay display, unsigned int rt_format)
         if (j < ARRAY_LENGTH(filters))
             print_string("name", filters[j].name);
 
-        switch (filter_list[i]) {
-        case VAProcFilterDeinterlacing:
-            {
-                VAProcFilterCapDeinterlacing deint[VAProcDeinterlacingCount];
-                unsigned int deint_count = ARRAY_LENGTH(deint);
-                memset(&deint, 0, sizeof(deint));
-
-                vas = vaQueryVideoProcFilterCaps(display, context,
-                                                 VAProcFilterDeinterlacing,
-                                                 &deint, &deint_count);
-                CHECK_VAS("Failed to query deinterlacing caps");
-
-                start_array("types");
-
-                for (j = 0; j < deint_count; j++) {
-                    for (k = 0; k < ARRAY_LENGTH(deinterlacer_types); k++) {
-                        if (deint[j].type == deinterlacer_types[k].type)
-                            break;
-                    }
-
-                    start_object(NULL);
-
-                    print_integer("type", deint[j].type);
-                    if (k < ARRAY_LENGTH(deinterlacer_types))
-                        print_string("name", deinterlacer_types[k].name);
-
-                    end_object();
-                }
-
-                end_array();
-            }
-            break;
-        case VAProcFilterColorBalance:
-            {
-                VAProcFilterCapColorBalance colour[VAProcColorBalanceCount];
-                unsigned int colour_count = ARRAY_LENGTH(colour);
-                memset(&colour, 0, sizeof(colour));
-
-                vas = vaQueryVideoProcFilterCaps(display, context,
-                                                 VAProcFilterColorBalance,
-                                                 &colour, &colour_count);
-                CHECK_VAS("Failed to query colour balance caps");
-
-                start_array("types");
-
-                for (j = 0; j < colour_count; j++) {
-                    for (k = 0; k < ARRAY_LENGTH(colour_balance_types); k++) {
-                        if (colour[j].type == colour_balance_types[k].type)
-                            break;
-                    }
-
-                    start_object(NULL);
-
-                    print_integer("type", colour[j].type);
-                    if (k < ARRAY_LENGTH(colour_balance_types))
-                        print_string("name", colour_balance_types[k].name);
-
-                    print_double("min_value",     colour[j].range.min_value);
-                    print_double("max_value",     colour[j].range.max_value);
-                    print_double("default_value", colour[j].range.default_value);
-                    print_double("step",          colour[j].range.step);
-
-                    end_object();
-                }
-
-                end_array();
-            }
-            break;
-#if LIBVA(2, 1, 0)
-        case VAProcFilterTotalColorCorrection:
-            {
-                VAProcFilterCapTotalColorCorrection
-                    colour[VAProcTotalColorCorrectionCount];
-                unsigned int colour_count = ARRAY_LENGTH(colour);
-                memset(&colour, 0, sizeof(colour));
-
-                vas = vaQueryVideoProcFilterCaps(display, context,
-                                                 VAProcFilterTotalColorCorrection,
-                                                 &colour, &colour_count);
-                CHECK_VAS("Failed to query total colour correction caps");
-
-                for (j = 0; j < colour_count; j++) {
-                    for (k = 0; k < ARRAY_LENGTH(total_colour_correction_types); k++) {
-                        if (colour[j].type == total_colour_correction_types[k].type)
-                            break;
-                    }
-
-                    start_object(NULL);
-
-                    print_integer("type", colour[j].type);
-                    if (k < ARRAY_LENGTH(total_colour_correction_types))
-                        print_string("name", total_colour_correction_types[k].name);
-
-                    print_double("min_value",     colour[j].range.min_value);
-                    print_double("max_value",     colour[j].range.max_value);
-                    print_double("default_value", colour[j].range.default_value);
-                    print_double("step",          colour[j].range.step);
-
-                    end_object();
-                }
-            }
-            break;
-#endif
-#if LIBVA(2, 3, 0)
-        case VAProcFilterHVSNoiseReduction:
-            {
-                // No caps (querying default caps isn't allowed either).
-            }
-            break;
-#endif
-#if LIBVA(2, 4, 0)
-        case VAProcFilterHighDynamicRangeToneMapping:
-            {
-                VAProcFilterCapHighDynamicRange
-                    hdr[VAProcHighDynamicRangeMetadataTypeCount];
-                unsigned int hdr_count = ARRAY_LENGTH(hdr);
-                memset(&hdr, 0, sizeof(hdr));
-
-                vas = vaQueryVideoProcFilterCaps(display, context,
-                                                 VAProcFilterHighDynamicRangeToneMapping,
-                                                 &hdr, &hdr_count);
-                CHECK_VAS("Failed to query HDR tone mapping caps");
-
-                start_array("types");
-
-                for (j = 0; j < hdr_count; j++) {
-                    for (k = 0; k < ARRAY_LENGTH(hdr_metadata_types); k++) {
-                        if (hdr[j].metadata_type == hdr_metadata_types[k].type)
-                            break;
-                    }
-
-                    start_object(NULL);
-
-                    print_integer("type", hdr[j].metadata_type);
-                    if (k < ARRAY_LENGTH(hdr_metadata_types))
-                        print_string("name", hdr_metadata_types[k].name);
-
-                    start_array("tone_mapping");
-                    for (k = 0; k < ARRAY_LENGTH(tone_mapping_types); k++) {
-                        if (hdr[j].caps_flag & tone_mapping_types[k].type)
-                            print_string(NULL, tone_mapping_types[k].name);
-                    }
-                    end_array();
-
-                    end_object();
-                }
-
-                end_array();
-            }
-            break;
-#endif
-        default:
-            {
-                VAProcFilterCap cap;
-                unsigned int cap_count = 1;
-                memset(&cap, 0, sizeof(cap));
-
-                vas = vaQueryVideoProcFilterCaps(display, context,
-                                                 filter_list[i],
-                                                 &cap, &cap_count);
-                CHECK_VAS("Failed to query filter caps");
-
-                if (cap_count > 0) {
-                    print_double("min_value",     cap.range.min_value);
-                    print_double("max_value",     cap.range.max_value);
-                    print_double("default_value", cap.range.default_value);
-                    print_double("step",          cap.range.step);
-                }
-            }
-        }
+        if (DUMP(FILTER_CAPS))
+            dump_filter_caps(display, context, filter_list[i]);
 
         end_object();
     }
 
     end_array(); // filters array.
 
-    VAProcPipelineCaps pipeline;
-    memset(&pipeline, 0, sizeof(pipeline));
+    if (DUMP(PIPELINE_CAPS)) {
+        VAProcPipelineCaps pipeline;
+        memset(&pipeline, 0, sizeof(pipeline));
 
-    vas = vaQueryVideoProcPipelineCaps(display, context,
-                                       NULL, 0, &pipeline);
-    CHECK_VAS("Failed to pipeline caps");
+        vas = vaQueryVideoProcPipelineCaps(display, context,
+                                           NULL, 0, &pipeline);
+        CHECK_VAS("Failed to pipeline caps");
 
-    start_object("pipeline");
+        start_object("pipeline");
 
-    print_integer("pipeline_flags",      pipeline.pipeline_flags);
-    print_integer("filter_flags",        pipeline.filter_flags);
-    print_integer("num_forward_references",  pipeline.num_forward_references);
-    print_integer("num_backward_references", pipeline.num_backward_references);
+        print_integer("pipeline_flags",      pipeline.pipeline_flags);
+        print_integer("filter_flags",        pipeline.filter_flags);
+        print_integer("num_forward_references",  pipeline.num_forward_references);
+        print_integer("num_backward_references", pipeline.num_backward_references);
 
-    start_array("input_colour_standards");
-    dump_colour_standards(pipeline.input_color_standards,
-                          pipeline.num_input_color_standards);
-    end_array();
+        start_array("input_colour_standards");
+        dump_colour_standards(pipeline.input_color_standards,
+                              pipeline.num_input_color_standards);
+        end_array();
 
-    start_array("output_colour_standards");
-    dump_colour_standards(pipeline.output_color_standards,
-                          pipeline.num_output_color_standards);
-    end_array();
+        start_array("output_colour_standards");
+        dump_colour_standards(pipeline.output_color_standards,
+                              pipeline.num_output_color_standards);
+        end_array();
 
 #if LIBVA(2, 1, 0)
-    start_array("rotation_flags");
-    for (i = 0; i < ARRAY_LENGTH(rotation_types); i++) {
-        if (pipeline.rotation_flags & 1 << rotation_types[i].type)
-            print_string(NULL, rotation_types[i].name);
-    }
-    end_array();
+        start_array("rotation_flags");
+        for (i = 0; i < ARRAY_LENGTH(rotation_types); i++) {
+            if (pipeline.rotation_flags & 1 << rotation_types[i].type)
+                print_string(NULL, rotation_types[i].name);
+        }
+        end_array();
 
-    start_array("blend_flags");
-    for (i = 0; i < ARRAY_LENGTH(blend_types); i++) {
-        if (pipeline.blend_flags & 1 << blend_types[i].type)
-            print_string(NULL, blend_types[i].name);
-    }
-    end_array();
+        start_array("blend_flags");
+        for (i = 0; i < ARRAY_LENGTH(blend_types); i++) {
+            if (pipeline.blend_flags & 1 << blend_types[i].type)
+                print_string(NULL, blend_types[i].name);
+        }
+        end_array();
 
-    start_array("mirror_flags");
-    for (i = 0; i < ARRAY_LENGTH(mirror_types); i++) {
-        if (pipeline.mirror_flags & 1 << mirror_types[i].type)
-            print_string(NULL, mirror_types[i].name);
-    }
-    end_array();
+        start_array("mirror_flags");
+        for (i = 0; i < ARRAY_LENGTH(mirror_types); i++) {
+            if (pipeline.mirror_flags & 1 << mirror_types[i].type)
+                print_string(NULL, mirror_types[i].name);
+        }
+        end_array();
 
-    print_integer("num_additional_outputs", pipeline.num_additional_outputs);
+        print_integer("num_additional_outputs", pipeline.num_additional_outputs);
 
-    start_array("input_pixel_formats");
-    for (i = 0; i < pipeline.num_input_pixel_formats; i++)
-        print_string(NULL, "%.4s", pipeline.input_pixel_format[i]);
-    end_array();
+        start_array("input_pixel_formats");
+        for (i = 0; i < pipeline.num_input_pixel_formats; i++)
+            print_string(NULL, "%.4s", pipeline.input_pixel_format[i]);
+        end_array();
 
-    start_array("output_pixel_formats");
-    for (i = 0; i < pipeline.num_output_pixel_formats; i++)
-        print_string(NULL, "%.4s", pipeline.output_pixel_format[i]);
-    end_array();
+        start_array("output_pixel_formats");
+        for (i = 0; i < pipeline.num_output_pixel_formats; i++)
+            print_string(NULL, "%.4s", pipeline.output_pixel_format[i]);
+        end_array();
 
 #define ATTR(name) do { print_integer(#name, pipeline.name); } while (0)
-    ATTR(max_input_width);
-    ATTR(max_input_height);
-    ATTR(min_input_width);
-    ATTR(min_input_height);
+        ATTR(max_input_width);
+        ATTR(max_input_height);
+        ATTR(min_input_width);
+        ATTR(min_input_height);
 
-    ATTR(max_output_width);
-    ATTR(max_output_height);
-    ATTR(min_output_width);
-    ATTR(min_output_height);
+        ATTR(max_output_width);
+        ATTR(max_output_height);
+        ATTR(min_output_width);
+        ATTR(min_output_height);
 #undef ATTR
 #endif
 
-    end_object(); // pipeline object.
+        end_object(); // pipeline object.
+    }
 
     vaDestroyContext(display, context);
     vaDestroyConfig(display, config);
@@ -1249,20 +1275,23 @@ static void dump_entrypoints(VADisplay display, VAProfile profile)
 
         unsigned int rt_formats = 0;
 
-        start_object("attributes");
-        dump_config_attributes(display, profile, entrypoint_list[i],
-                               &rt_formats);
-        end_object();
+        if (DUMP(ATTRIBUTES)) {
+            start_object("attributes");
+            dump_config_attributes(display, profile, entrypoint_list[i],
+                                   &rt_formats);
+            end_object();
+        }
 
-        if (rt_formats) {
+        if (DUMP(SURFACE_FORMATS) && rt_formats) {
             start_array("surface_formats");
             dump_surface_attributes(display, profile, entrypoint_list[i],
                                     rt_formats);
             end_array();
-
-            if (entrypoint_list[i] == VAEntrypointVideoProc)
-                dump_filter_caps(display, rt_formats);
         }
+
+        if (DUMP(FILTERS) &&
+            entrypoint_list[i] == VAEntrypointVideoProc)
+            dump_filters(display, rt_formats);
 
         end_object();
     }
@@ -1294,9 +1323,11 @@ static void dump_profiles(VADisplay display)
             print_string("description", "%s", profiles[j].description);
         }
 
-        start_array("entrypoints");
-        dump_entrypoints(display, profile_list[i]);
-        end_array();
+        if (DUMP(ENTRYPOINTS)) {
+            start_array("entrypoints");
+            dump_entrypoints(display, profile_list[i]);
+            end_array();
+        }
 
         end_object();
     }
@@ -1406,12 +1437,26 @@ int main(int argc, char **argv)
         { "indent",  required_argument, 0, 'i' },
         { "ugly",    no_argument,       0, 'u' },
         { "device",  required_argument, 0, 'd' },
+        { "all",     no_argument,       0, 'a' },
+
+        { "profiles",           no_argument, 0, 'p' },
+        { "entrypoints",        no_argument, 0, 'e' },
+        { "attributes",         no_argument, 0, 't' },
+        { "surface-formats",    no_argument, 0, 's' },
+        { "filters",            no_argument, 0, 'f' },
+        { "filter-caps",        no_argument, 0, 'c' },
+        { "pipeline-caps",      no_argument, 0, 'l' },
+        { "image-formats",      no_argument, 0, 'm' },
+        { "subpicture-formats", no_argument, 0, 'b' },
     };
+    static const char *short_options = "i:ud:apetsfclmb";
 
     const char *drm_device = NULL;
 
+    dump_mask = 0;
     while (1) {
-        int c = getopt_long(argc, argv, "vi:ud:x", long_options, &option_index);
+        int c = getopt_long(argc, argv,
+                            short_options, long_options, &option_index);
         if (c == -1)
             break;
 
@@ -1425,10 +1470,26 @@ int main(int argc, char **argv)
         case 'd':
             drm_device = optarg;
             break;
+        case 'a':
+            dump_mask = (1 << DUMP_MAX) - 1;
+            break;
+#define DUMP_ARG(ch, name) case ch: dump_mask |= (1 << DUMP_ ## name); break
+        DUMP_ARG('p', PROFILES);
+        DUMP_ARG('e', ENTRYPOINTS);
+        DUMP_ARG('t', ATTRIBUTES);
+        DUMP_ARG('s', SURFACE_FORMATS);
+        DUMP_ARG('f', FILTERS);
+        DUMP_ARG('c', FILTER_CAPS);
+        DUMP_ARG('l', PIPELINE_CAPS);
+        DUMP_ARG('m', IMAGE_FORMATS);
+        DUMP_ARG('b', SUBPICTURE_FORMATS);
+#undef DUMP_ARG
         default:
             die("Unknown option.\n");
         }
     }
+    if (dump_mask == 0)
+        dump_mask = (1 << DUMP_MAX) - 1;
 
     if (!drm_device)
         drm_device = "/dev/dri/renderD128";
@@ -1466,19 +1527,25 @@ int main(int argc, char **argv)
     else
         print_string("driver_vendor", "unknown");
 
-    start_array("profiles");
-    dump_profiles(display);
-    end_array();
+    if (DUMP(PROFILES)) {
+        start_array("profiles");
+        dump_profiles(display);
+        end_array();
+    }
 
-    start_array("image_formats");
-    dump_image_formats(display);
-    end_array();
+    if (DUMP(IMAGE_FORMATS)) {
+        start_array("image_formats");
+        dump_image_formats(display);
+        end_array();
+    }
 
-    start_array("subpicture_formats");
-    dump_subpicture_formats(display);
-    end_array();
+    if (DUMP(SUBPICTURE_FORMATS)) {
+        start_array("subpicture_formats");
+        dump_subpicture_formats(display);
+        end_array();
+    }
 
-    printf("}\n");
+    end_object();
 
     vaTerminate(display);
 
