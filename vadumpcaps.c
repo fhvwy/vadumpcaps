@@ -267,13 +267,22 @@ static struct {
     R(YUV444),
     R(YUV411),
     R(YUV400),
-#if LIBVA(1, 6, 2)
+#if LIBVA(2, 2, 0)
+    R(YUV420_10),
+    R(YUV422_10),
+    R(YUV444_10),
+    R(YUV420_12),
+    R(YUV422_12),
+    R(YUV444_12),
+#elif LIBVA(1, 6, 2)
     R(YUV420_10BPP),
 #endif
     R(RGB16),
     R(RGB32),
     R(RGBP),
-#if LIBVA(2, 1, 0)
+#if LIBVA(2, 2, 0)
+    R(RGB32_10),
+#elif LIBVA(2, 1, 0)
     R(RGB32_10BPP),
 #endif
 #undef R
