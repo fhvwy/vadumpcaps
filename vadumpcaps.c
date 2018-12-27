@@ -304,6 +304,9 @@ static struct {
 #if LIBVA(2, 1, 0)
     F(TotalColorCorrection),
 #endif
+#if LIBVA(2, 3, 0)
+    F(HVSNoiseReduction),
+#endif
 #undef F
 };
 
@@ -1038,6 +1041,13 @@ static void dump_filter_caps(VADisplay display, unsigned int rt_format)
 
                     end_object();
                 }
+            }
+            break;
+#endif
+#if LIBVA(2, 3, 0)
+        case VAProcFilterHVSNoiseReduction:
+            {
+                // No caps (querying default caps isn't allowed either).
             }
             break;
 #endif
