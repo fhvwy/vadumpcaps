@@ -1030,6 +1030,8 @@ static void dump_filter_caps(VADisplay display, VAContextID context,
                                              &colour, &colour_count);
             CHECK_VAS("Failed to query total colour correction caps");
 
+            start_array("types");
+
             for (j = 0; j < colour_count; j++) {
                 for (k = 0; k < ARRAY_LENGTH(total_colour_correction_types); k++) {
                     if (colour[j].type == total_colour_correction_types[k].type)
@@ -1049,6 +1051,8 @@ static void dump_filter_caps(VADisplay display, VAContextID context,
 
                 end_object();
             }
+
+            end_array();
         }
         break;
 #endif
