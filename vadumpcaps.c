@@ -51,6 +51,7 @@
 #define LIBVA_2_0_0 VA_CHECK_VERSION(1,  0, 0)
 #define LIBVA_2_1_0 VA_CHECK_VERSION(1,  1, 0)
 #define LIBVA_2_2_0 VA_CHECK_VERSION(1,  2, 0)
+#define LIBVA_2_3_0 VA_CHECK_VERSION(1,  3, 0)
 #define LIBVA(major, minor, micro) \
        (LIBVA_ ## major ## _ ## minor ## _ ## micro)
 
@@ -456,6 +457,10 @@ static void dump_config_attributes(VADisplay display,
 #if LIBVA(2, 1, 0)
                 AV(RC, CFS);
                 AV(RC, PARALLEL);
+#endif
+#if LIBVA(2, 3, 0)
+                AV(RC, QVBR);
+                AV(RC, AVBR);
 #endif
                 end_array();
             }
