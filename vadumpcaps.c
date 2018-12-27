@@ -1124,6 +1124,277 @@ static void dump_filter_caps(VADisplay display, VAContextID context,
     }
 }
 
+static void dump_pipeline_caps(VADisplay display, VAContextID context,
+                               VABufferID *filter_buffers,
+                               int nb_filter_buffers)
+{
+    VAStatus vas;
+    int i;
+
+    VAProcPipelineCaps pipeline;
+    memset(&pipeline, 0, sizeof(pipeline));
+
+    vas = vaQueryVideoProcPipelineCaps(display, context,
+                                       filter_buffers, nb_filter_buffers,
+                                       &pipeline);
+    CHECK_VAS("Failed to query pipeline caps");
+
+    start_object("pipeline");
+
+    print_integer("pipeline_flags",      pipeline.pipeline_flags);
+    print_integer("filter_flags",        pipeline.filter_flags);
+    print_integer("num_forward_references",  pipeline.num_forward_references);
+    print_integer("num_backward_references", pipeline.num_backward_references);
+
+    start_array("input_colour_standards");
+    dump_colour_standards(pipeline.input_color_standards,
+                          pipeline.num_input_color_standards);
+    end_array();
+
+    start_array("output_colour_standards");
+    dump_colour_standards(pipeline.output_color_standards,
+                          pipeline.num_output_color_standards);
+    end_array();
+
+#if LIBVA(2, 1, 0)
+    start_array("rotation_flags");
+    for (i = 0; i < ARRAY_LENGTH(rotation_types); i++) {
+        if (pipeline.rotation_flags & 1 << rotation_types[i].type)
+            print_string(NULL, rotation_types[i].name);
+    }
+    end_array();
+
+    start_array("blend_flags");
+    for (i = 0; i < ARRAY_LENGTH(blend_types); i++) {
+        if (pipeline.blend_flags & 1 << blend_types[i].type)
+            print_string(NULL, blend_types[i].name);
+    }
+    end_array();
+
+    start_array("mirror_flags");
+    for (i = 0; i < ARRAY_LENGTH(mirror_types); i++) {
+        if (pipeline.mirror_flags & 1 << mirror_types[i].type)
+            print_string(NULL, mirror_types[i].name);
+    }
+    end_array();
+
+    print_integer("num_additional_outputs", pipeline.num_additional_outputs);
+
+    start_array("input_pixel_formats");
+    for (i = 0; i < pipeline.num_input_pixel_formats; i++)
+        print_string(NULL, "%.4s", pipeline.input_pixel_format[i]);
+    end_array();
+
+    start_array("output_pixel_formats");
+    for (i = 0; i < pipeline.num_output_pixel_formats; i++)
+        print_string(NULL, "%.4s", pipeline.output_pixel_format[i]);
+    end_array();
+
+#define ATTR(name) do { print_integer(#name, pipeline.name); } while (0)
+    ATTR(max_input_width);
+    ATTR(max_input_height);
+    ATTR(min_input_width);
+    ATTR(min_input_height);
+
+    ATTR(max_output_width);
+    ATTR(max_output_height);
+    ATTR(min_output_width);
+    ATTR(min_output_height);
+#undef ATTR
+#endif
+
+    end_object();
+}
+
+static void dump_filter_pipelines(VADisplay display, VAContextID context,
+                                  VAProcFilterType filter)
+{
+    VABufferID filter_buffer = VA_INVALID_ID;
+    VAStatus vas;
+    int i;
+
+    switch (filter) {
+    case VAProcFilterNone:
+        break;
+    case VAProcFilterDeinterlacing:
+        {
+            VAProcFilterCapDeinterlacing deint[VAProcDeinterlacingCount];
+            unsigned int deint_count = ARRAY_LENGTH(deint);
+            memset(&deint, 0, sizeof(deint));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterDeinterlacing,
+                                             &deint, &deint_count);
+            CHECK_VAS("Failed to query deinterlacing caps");
+
+            // Choose the highest value to query.
+            int deint_type = VAProcDeinterlacingNone;
+            for (i = 0; i < deint_count; i++) {
+                if (deint[i].type > deint_type)
+                    deint_type = deint[i].type;
+            }
+
+            if (deint_type != VAProcDeinterlacingNone) {
+                VAProcFilterParameterBufferDeinterlacing param = {
+                    .type      = filter,
+                    .algorithm = deint_type,
+                    .flags     = 0,
+                };
+                vas = vaCreateBuffer(display, context,
+                                     VAProcFilterParameterBufferType,
+                                     sizeof(param), 1,
+                                     &param, &filter_buffer);
+                CHECK_VAS("Failed to create deinterlacing parameter buffer");
+            }
+        }
+        break;
+    case VAProcFilterColorBalance:
+        {
+            VAProcFilterCapColorBalance colour[VAProcColorBalanceCount];
+            unsigned int colour_count = ARRAY_LENGTH(colour);
+            memset(&colour, 0, sizeof(colour));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterColorBalance,
+                                             &colour, &colour_count);
+            CHECK_VAS("Failed to query colour balance caps");
+
+            if (colour_count > 0) {
+                VAProcFilterParameterBufferColorBalance
+                    param[VAProcColorBalanceCount];
+                for (i = 0; i < colour_count; i++) {
+                    param[i] = (VAProcFilterParameterBufferColorBalance) {
+                        .type   = filter,
+                        .attrib = colour[i].type,
+                        .value  = colour[i].range.default_value,
+                    };
+                }
+                vas = vaCreateBuffer(display, context,
+                                     VAProcFilterParameterBufferType,
+                                     colour_count * sizeof(param), 1,
+                                     &param, &filter_buffer);
+                CHECK_VAS("Failed to create colour balance parameter buffer");
+            }
+        }
+        break;
+    case VAProcFilterTotalColorCorrection:
+        {
+            VAProcFilterCapTotalColorCorrection
+                colour[VAProcTotalColorCorrectionCount];
+            unsigned int colour_count = ARRAY_LENGTH(colour);
+            memset(&colour, 0, sizeof(colour));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterTotalColorCorrection,
+                                             &colour, &colour_count);
+            CHECK_VAS("Failed to query total colour correction caps");
+
+            if (colour_count > 0) {
+                VAProcFilterParameterBufferTotalColorCorrection
+                    param[VAProcTotalColorCorrectionCount];
+                for (i = 0; i < colour_count; i++) {
+                    param[i] = (VAProcFilterParameterBufferTotalColorCorrection) {
+                        .type   = filter,
+                        .attrib = colour[i].type,
+                        .value  = colour[i].range.default_value,
+                    };
+                }
+                vas = vaCreateBuffer(display, context,
+                                     VAProcFilterParameterBufferType,
+                                     colour_count * sizeof(param), 1,
+                                     &param, &filter_buffer);
+                CHECK_VAS("Failed to create colour correction parameter buffer");
+            }
+        }
+        break;
+    case  VAProcFilterHVSNoiseReduction:
+        {
+            VAProcFilterParameterBufferHVSNoiseReduction param = {
+                .type     = filter,
+                .qp       = 26,
+                .strength = 10,
+            };
+            vas = vaCreateBuffer(display, context,
+                                 VAProcFilterParameterBufferType,
+                                 sizeof(param), 1,
+                                 &param, &filter_buffer);
+            CHECK_VAS("Failed to create HVS NR parameter buffer");
+        }
+        break;
+    case VAProcFilterHighDynamicRangeToneMapping:
+        {
+            VAProcFilterCapHighDynamicRange
+                hdr[VAProcHighDynamicRangeMetadataTypeCount];
+            unsigned int hdr_count = ARRAY_LENGTH(hdr);
+            memset(&hdr, 0, sizeof(hdr));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilterHighDynamicRangeToneMapping,
+                                             &hdr, &hdr_count);
+            CHECK_VAS("Failed to query HDR tone mapping caps");
+
+            if (hdr_count > 0 &&
+                hdr[0].metadata_type == VAProcHighDynamicRangeMetadataHDR10) {
+                VAHdrMetaDataHDR10 hdr10 = {
+                    .display_primaries_x = { 13245,  7500, 34000 },
+                    .display_primaries_y = { 34500,  3000, 16000 },
+                    .white_point_x = 15635,
+                    .white_point_y = 15635,
+                    .max_display_mastering_luminance = 10000000,
+                    .min_display_mastering_luminance = 10,
+                };
+                VAProcFilterParameterBufferHDRToneMapping param = {
+                    .type = filter,
+                    .data = {
+                        .metadata_type = VAProcHighDynamicRangeMetadataHDR10,
+                        .metadata      = &hdr10,
+                        .metadata_size = sizeof(hdr10),
+                    },
+                };
+                vas = vaCreateBuffer(display, context,
+                                     VAProcFilterParameterBufferType,
+                                     sizeof(param), 1,
+                                     &param, &filter_buffer);
+                CHECK_VAS("Failed to create HDR tone mapping parameter buffer");
+            }
+        }
+        break;
+    default:
+        {
+            VAProcFilterCap cap;
+            unsigned int cap_count = 1;
+            memset(&cap, 0, sizeof(cap));
+
+            vas = vaQueryVideoProcFilterCaps(display, context, filter,
+                                             &cap, &cap_count);
+            CHECK_VAS("Failed to query filter caps");
+
+            if (cap_count > 0) {
+                VAProcFilterParameterBuffer param = {
+                    .type  = filter,
+                    .value = cap.range.default_value,
+                };
+                vas = vaCreateBuffer(display, context,
+                                     VAProcFilterParameterBufferType,
+                                     sizeof(param), 1,
+                                     &param, &filter_buffer);
+                CHECK_VAS("Failed to create filter parameter buffer");
+            }
+        }
+    }
+
+    if (filter_buffer == VA_INVALID_ID) {
+        if (filter == VAProcFilterNone) {
+            dump_pipeline_caps(display, context, NULL, 0);
+        } else {
+            // Broken filter caps.
+        }
+    } else {
+        dump_pipeline_caps(display, context, &filter_buffer, 1);
+        vaDestroyBuffer(display, filter_buffer);
+    }
+}
+
 static void dump_filters(VADisplay display, unsigned int rt_format)
 {
     VAStatus vas;
@@ -1168,85 +1439,16 @@ static void dump_filters(VADisplay display, unsigned int rt_format)
         if (DUMP(FILTER_CAPS))
             dump_filter_caps(display, context, filter_list[i]);
 
+        if (DUMP(PIPELINE_CAPS))
+            dump_filter_pipelines(display, context, filter_list[i]);
+
         end_object();
     }
 
     end_array(); // filters array.
 
-    if (DUMP(PIPELINE_CAPS)) {
-        VAProcPipelineCaps pipeline;
-        memset(&pipeline, 0, sizeof(pipeline));
-
-        vas = vaQueryVideoProcPipelineCaps(display, context,
-                                           NULL, 0, &pipeline);
-        CHECK_VAS("Failed to pipeline caps");
-
-        start_object("pipeline");
-
-        print_integer("pipeline_flags",      pipeline.pipeline_flags);
-        print_integer("filter_flags",        pipeline.filter_flags);
-        print_integer("num_forward_references",  pipeline.num_forward_references);
-        print_integer("num_backward_references", pipeline.num_backward_references);
-
-        start_array("input_colour_standards");
-        dump_colour_standards(pipeline.input_color_standards,
-                              pipeline.num_input_color_standards);
-        end_array();
-
-        start_array("output_colour_standards");
-        dump_colour_standards(pipeline.output_color_standards,
-                              pipeline.num_output_color_standards);
-        end_array();
-
-#if LIBVA(2, 1, 0)
-        start_array("rotation_flags");
-        for (i = 0; i < ARRAY_LENGTH(rotation_types); i++) {
-            if (pipeline.rotation_flags & 1 << rotation_types[i].type)
-                print_string(NULL, rotation_types[i].name);
-        }
-        end_array();
-
-        start_array("blend_flags");
-        for (i = 0; i < ARRAY_LENGTH(blend_types); i++) {
-            if (pipeline.blend_flags & 1 << blend_types[i].type)
-                print_string(NULL, blend_types[i].name);
-        }
-        end_array();
-
-        start_array("mirror_flags");
-        for (i = 0; i < ARRAY_LENGTH(mirror_types); i++) {
-            if (pipeline.mirror_flags & 1 << mirror_types[i].type)
-                print_string(NULL, mirror_types[i].name);
-        }
-        end_array();
-
-        print_integer("num_additional_outputs", pipeline.num_additional_outputs);
-
-        start_array("input_pixel_formats");
-        for (i = 0; i < pipeline.num_input_pixel_formats; i++)
-            print_string(NULL, "%.4s", pipeline.input_pixel_format[i]);
-        end_array();
-
-        start_array("output_pixel_formats");
-        for (i = 0; i < pipeline.num_output_pixel_formats; i++)
-            print_string(NULL, "%.4s", pipeline.output_pixel_format[i]);
-        end_array();
-
-#define ATTR(name) do { print_integer(#name, pipeline.name); } while (0)
-        ATTR(max_input_width);
-        ATTR(max_input_height);
-        ATTR(min_input_width);
-        ATTR(min_input_height);
-
-        ATTR(max_output_width);
-        ATTR(max_output_height);
-        ATTR(min_output_width);
-        ATTR(min_output_height);
-#undef ATTR
-#endif
-
-        end_object(); // pipeline object.
-    }
+    if (DUMP(PIPELINE_CAPS))
+        dump_filter_pipelines(display, context, VAProcFilterNone);
 
     vaDestroyContext(display, context);
     vaDestroyConfig(display, config);
