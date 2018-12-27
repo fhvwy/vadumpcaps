@@ -1459,31 +1459,34 @@ static void dump_filters(VADisplay display, unsigned int rt_format)
 
     start_array("filters");
 
-    for (i = 0; i < filter_count; i++) {
+    for (i = -1; i < (int)filter_count; i++) {
+        VAProcFilterType filter;
+        if (i == -1)
+            filter = VAProcFilterNone;
+        else
+            filter = filter_list[i];
+
         for (j = 0; j < ARRAY_LENGTH(filters); j++) {
-            if (filters[j].filter == filter_list[i])
+            if (filters[j].filter == filter)
                 break;
         }
 
         start_object(NULL);
 
-        print_integer("filter", filter_list[i]);
+        print_integer("filter", filter);
         if (j < ARRAY_LENGTH(filters))
             print_string("name", filters[j].name);
 
-        if (DUMP(FILTER_CAPS))
-            dump_filter_caps(display, context, filter_list[i]);
+        if (DUMP(FILTER_CAPS) && filter != VAProcFilterNone)
+            dump_filter_caps(display, context, filter);
 
         if (DUMP(PIPELINE_CAPS))
-            dump_filter_pipelines(display, context, filter_list[i]);
+            dump_filter_pipelines(display, context, filter);
 
         end_object();
     }
 
-    end_array(); // filters array.
-
-    if (DUMP(PIPELINE_CAPS))
-        dump_filter_pipelines(display, context, VAProcFilterNone);
+    end_array();
 
     vaDestroyContext(display, context);
     vaDestroyConfig(display, config);
