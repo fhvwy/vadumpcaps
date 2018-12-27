@@ -330,6 +330,30 @@ static struct {
 };
 
 static struct {
+    uint32_t flag;
+    const char *name;
+} proc_pipeline_flags[] = {
+#define F(name) { VA_PROC_PIPELINE_ ## name, #name }
+    F(SUBPICTURES),
+    F(FAST),
+#undef F
+}, proc_filter_flags[] = {
+#define F(name) { VA_ ## name, #name }
+    F(PROC_FILTER_MANDATORY),
+    F(FRAME_PICTURE),
+    F(TOP_FIELD),
+    F(BOTTOM_FIELD),
+    F(SRC_BT601),
+    F(SRC_BT709),
+    F(SRC_SMPTE_240),
+    F(FILTER_SCALING_DEFAULT),
+    F(FILTER_SCALING_FAST),
+    F(FILTER_SCALING_HQ),
+    F(FILTER_SCALING_NL_ANAMORPHIC),
+#undef F
+};
+
+static struct {
     VAProcDeinterlacingType type;
     const char *name;
 } deinterlacer_types[] = {
@@ -1141,8 +1165,19 @@ static void dump_pipeline_caps(VADisplay display, VAContextID context,
 
     start_object("pipeline");
 
-    print_integer("pipeline_flags",      pipeline.pipeline_flags);
-    print_integer("filter_flags",        pipeline.filter_flags);
+    start_array("pipeline_flags");
+    for (i = 0; i < ARRAY_LENGTH(proc_pipeline_flags); i++) {
+        if (pipeline.pipeline_flags & proc_pipeline_flags[i].flag)
+            print_string(NULL, proc_pipeline_flags[i].name);
+    }
+    end_array();
+    start_array("filter_flags");
+    for (i = 0; i < ARRAY_LENGTH(proc_filter_flags); i++) {
+        if (pipeline.filter_flags & proc_filter_flags[i].flag)
+            print_string(NULL, proc_filter_flags[i].name);
+    }
+    end_array();
+
     print_integer("num_forward_references",  pipeline.num_forward_references);
     print_integer("num_backward_references", pipeline.num_backward_references);
 
