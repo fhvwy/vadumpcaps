@@ -53,6 +53,14 @@
 #define LIBVA_2_2_0 VA_CHECK_VERSION(1,  2, 0)
 #define LIBVA_2_3_0 VA_CHECK_VERSION(1,  3, 0)
 #define LIBVA_2_4_0 VA_CHECK_VERSION(1,  4, 0)
+#define LIBVA_2_5_0 VA_CHECK_VERSION(1,  5, 0)
+#define LIBVA_2_6_0 VA_CHECK_VERSION(1,  6, 0)
+#define LIBVA_2_7_0 VA_CHECK_VERSION(1,  7, 0)
+#define LIBVA_2_8_0 VA_CHECK_VERSION(1,  8, 0)
+#define LIBVA_2_9_0 VA_CHECK_VERSION(1,  9, 0)
+#define LIBVA_2_10_0 VA_CHECK_VERSION(1, 10, 0)
+#define LIBVA_2_11_0 VA_CHECK_VERSION(1, 11, 0)
+#define LIBVA_2_12_0 VA_CHECK_VERSION(1, 12, 0)
 #define LIBVA(major, minor, micro) \
        (LIBVA_ ## major ## _ ## minor ## _ ## micro)
 
@@ -801,6 +809,53 @@ static void dump_config_attributes(VADisplay display,
         case VAConfigAttribQPBlockSize:
             {
                 print_integer("qp_block_size", value);
+            }
+            break;
+#endif
+#if LIBVA(2, 5, 0)
+        case VAConfigAttribMaxFrameSize:
+            {
+                VAConfigAttribValMaxFrameSize mfs = { .value = value };
+                start_object("max_frame_size");
+#define SA(name) do { print_integer(#name, mfs.bits.name); } while (0)
+                SA(max_frame_size);
+                SA(multiple_pass);
+#undef SA
+                end_object();
+            }
+            break;
+#endif
+#if LIBVA(2, 6, 0)
+        case VAConfigAttribPredictionDirection:
+            {
+                start_array("prediction_direction");
+                AV(PREDICTION_DIRECTION, PREVIOUS);
+                AV(PREDICTION_DIRECTION, FUTURE);
+                AV(PREDICTION_DIRECTION, BI_NOT_EMPTY);
+                end_object();
+            }
+            break;
+        case VAConfigAttribMultipleFrame:
+            {
+                 VAConfigAttribValMultipleFrame mf = { .value = value };
+                 start_object("multiple_frame");
+#define SA(name) do { print_integer(#name, mf.bits.name); } while (0)
+                 SA(max_num_concurrent_frames);
+                 SA(mixed_quality_level);
+#undef SA
+                 end_object();
+            }
+            break;
+#endif
+#if LIBVA(2, 9, 0)
+        case VAConfigAttribContextPriority:
+            {
+                 VAConfigAttribValContextPriority cp = { .value = value };
+                 start_object("context_priority");
+#define SA(name) do { print_integer(#name, cp.bits.name); } while (0)
+                 SA(priority);
+#undef SA
+                 end_object();
             }
             break;
 #endif
