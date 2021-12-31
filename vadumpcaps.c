@@ -1086,6 +1086,18 @@ static void dump_surface_attributes(VADisplay display,
                 }
                 break;
 #endif
+#if LIBVA(2, 12, 0)
+            case VASurfaceAttribDRMFormatModifiers:
+                {
+                    const VADRMFormatModifierList *fml =
+                        attr_list[i].value.value.p;
+                    start_array("drm_format_modifiers");
+                    for (int j = 0; j < fml->num_modifiers; j++)
+                        print_integer(NULL, fml->modifiers[j]);
+                    end_array();
+                }
+                break;
+#endif
             default:
                 {
                     start_object("unknown");
