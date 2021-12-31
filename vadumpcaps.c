@@ -1952,6 +1952,7 @@ int main(int argc, char **argv)
         { "indent",  required_argument, 0, 'i' },
         { "ugly",    no_argument,       0, 'u' },
         { "device",  required_argument, 0, 'd' },
+        { "driver",  required_argument, 0, 'r' },
         { "all",     no_argument,       0, 'a' },
 
         { "profiles",           no_argument, 0, 'p' },
@@ -1964,9 +1965,10 @@ int main(int argc, char **argv)
         { "image-formats",      no_argument, 0, 'm' },
         { "subpicture-formats", no_argument, 0, 'b' },
     };
-    static const char *short_options = "i:ud:apetsfclmb";
+    static const char *short_options = "i:ud:r:apetsfclmb";
 
     const char *drm_device = NULL;
+    const char *driver_name = NULL;
 
     dump_mask = 0;
     while (1) {
@@ -1984,6 +1986,9 @@ int main(int argc, char **argv)
             break;
         case 'd':
             drm_device = optarg;
+            break;
+        case 'r':
+            driver_name = optarg;
             break;
         case 'a':
             dump_mask = (1 << DUMP_MAX) - 1;
@@ -2018,6 +2023,17 @@ int main(int argc, char **argv)
         die("Failed to open VA display from DRM device.\n");
 
     VAStatus vas;
+    if (driver_name) {
+#if LIBVA(1, 6, 0)
+        vas = vaSetDriverName(display, (char*)driver_name);
+        if (vas != VA_STATUS_SUCCESS)
+            die("Failed to set driver name: %d (%s).\n",
+                vas, vaErrorStr(vas));
+#else
+        die("Driver name setting not supported.\n");
+#endif
+    }
+
     int major = 0, minor = 0;
     vas = vaInitialize(display, &major, &minor);
     if (vas != VA_STATUS_SUCCESS)
