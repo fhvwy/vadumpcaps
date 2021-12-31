@@ -502,6 +502,15 @@ static struct {
 };
 #endif
 
+#if LIBVA(2, 12, 0)
+static const char *const feature_values[] = {
+    [VA_FEATURE_NOT_SUPPORTED] = "not_supported",
+    [VA_FEATURE_SUPPORTED]     = "supported",
+    [VA_FEATURE_REQUIRED]      = "required",
+    [3]                        = "undefined",
+};
+#endif
+
 static void dump_config_attributes(VADisplay display,
                                    VAProfile profile, VAEntrypoint entrypoint,
                                    unsigned int *rt_formats)
@@ -523,6 +532,9 @@ static void dump_config_attributes(VADisplay display,
 #define AV(type, bit) do { \
             if (value & VA_ ## type ## _ ## bit) \
                 print_string(NULL, #bit); \
+        } while (0)
+#define AF(var, field) do { \
+            print_string(#field, feature_values[var.bits.field]); \
         } while (0)
 
         switch(attr_list[i].type) {
@@ -917,6 +929,50 @@ static void dump_config_attributes(VADisplay display,
         case VAConfigAttribProtectedContentUsage:
             {
                 print_integer("protected_content_usage", value);
+            }
+            break;
+#endif
+#if LIBVA(2, 12, 0)
+        case VAConfigAttribEncHEVCFeatures:
+            {
+                VAConfigAttribValEncHEVCFeatures ehf = { .value = value };
+                start_object("enc_hevc_features");
+                AF(ehf, separate_colour_planes);
+                AF(ehf, scaling_lists);
+                AF(ehf, amp);
+                AF(ehf, sao);
+                AF(ehf, pcm);
+                AF(ehf, temporal_mvp);
+                AF(ehf, strong_intra_smoothing);
+                AF(ehf, dependent_slices);
+                AF(ehf, sign_data_hiding);
+                AF(ehf, constrained_intra_pred);
+                AF(ehf, transform_skip);
+                AF(ehf, cu_qp_delta);
+                AF(ehf, weighted_prediction);
+                AF(ehf, transquant_bypass);
+                AF(ehf, deblocking_filter_disable);
+                end_object();
+            }
+            break;
+        case VAConfigAttribEncHEVCBlockSizes:
+            {
+                VAConfigAttribValEncHEVCBlockSizes ehbs = { .value = value };
+                start_object("enc_hevc_block_sizes");
+#define BS(name) do { print_integer(#name, ehbs.bits.name); } while (0)
+                BS(log2_max_coding_tree_block_size_minus3);
+                BS(log2_min_coding_tree_block_size_minus3);
+                BS(log2_min_luma_coding_block_size_minus3);
+                BS(log2_max_luma_transform_block_size_minus2);
+                BS(log2_min_luma_transform_block_size_minus2);
+                BS(max_max_transform_hierarchy_depth_inter);
+                BS(min_max_transform_hierarchy_depth_inter);
+                BS(max_max_transform_hierarchy_depth_intra);
+                BS(min_max_transform_hierarchy_depth_intra);
+                BS(log2_max_pcm_coding_block_size_minus3);
+                BS(log2_min_pcm_coding_block_size_minus3);
+#undef BS
+                end_object();
             }
             break;
 #endif
