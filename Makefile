@@ -1,6 +1,6 @@
 
 PREFIX := /usr/local
-CFLAGS := -Wall -g
+CFLAGS := -Wall -Wundef -g
 
 vadumpcaps: vadumpcaps.c
 	$(CC) -o $@ $(CFLAGS) $< $(shell pkg-config --libs --cflags libva libva-drm)
