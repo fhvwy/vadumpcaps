@@ -1552,6 +1552,7 @@ static void dump_filter_pipelines(VADisplay display, VAContextID context,
             }
         }
         break;
+#if LIBVA(2, 1, 0)
     case VAProcFilterTotalColorCorrection:
         {
             VAProcFilterCapTotalColorCorrection
@@ -1582,6 +1583,8 @@ static void dump_filter_pipelines(VADisplay display, VAContextID context,
             }
         }
         break;
+#endif
+#if LIBVA(2, 3, 0)
     case  VAProcFilterHVSNoiseReduction:
         {
             VAProcFilterParameterBufferHVSNoiseReduction param = {
@@ -1596,6 +1599,8 @@ static void dump_filter_pipelines(VADisplay display, VAContextID context,
             CHECK_VAS("Failed to create HVS NR parameter buffer");
         }
         break;
+#endif
+#if LIBVA(2, 4, 0)
     case VAProcFilterHighDynamicRangeToneMapping:
         {
             VAProcFilterCapHighDynamicRange
@@ -1634,6 +1639,8 @@ static void dump_filter_pipelines(VADisplay display, VAContextID context,
             }
         }
         break;
+#endif
+#if LIBVA(2, 12, 0)
     case VAProcFilter3DLUT:
         {
             VAProcFilterCap3DLUT lut[16];
@@ -1665,6 +1672,7 @@ static void dump_filter_pipelines(VADisplay display, VAContextID context,
             }
         }
         break;
+#endif
     default:
         {
             VAProcFilterCap cap;
