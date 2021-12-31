@@ -561,6 +561,9 @@ static void dump_config_attributes(VADisplay display,
                 AV(RC, QVBR);
                 AV(RC, AVBR);
 #endif
+#if LIBVA(2, 10, 0)
+                AV(RC, TCBRC);
+#endif
                 end_array();
             }
             break;
@@ -641,6 +644,9 @@ static void dump_config_attributes(VADisplay display,
 #if LIBVA(2, 0, 0)
                 AV(ENC_SLICE_STRUCTURE, EQUAL_ROWS);
                 AV(ENC_SLICE_STRUCTURE, MAX_SLICE_SIZE);
+#endif
+#if LIBVA(2, 8, 0)
+                AV(ENC_SLICE_STRUCTURE, EQUAL_MULTI_ROWS);
 #endif
                 end_array();
             }
@@ -821,6 +827,96 @@ static void dump_config_attributes(VADisplay display,
         case VAConfigAttribQPBlockSize:
             {
                 print_integer("qp_block_size", value);
+            }
+            break;
+#endif
+#if LIBVA(2, 5, 0)
+        case VAConfigAttribMaxFrameSize:
+            {
+                VAConfigAttribValMaxFrameSize mfs = { .value = value };
+                start_object("max_frame_size");
+                print_boolean("max_frame_size", mfs.bits.max_frame_size);
+                print_boolean("multiple_pass",  mfs.bits.multiple_pass);
+                end_object();
+            }
+            break;
+#endif
+#if LIBVA(2, 6, 0)
+        case VAConfigAttribPredictionDirection:
+            {
+                start_array("prediction_direction");
+                AV(PREDICTION_DIRECTION, PREVIOUS);
+                AV(PREDICTION_DIRECTION, FUTURE);
+#if LIBVA(2, 8, 0)
+                AV(PREDICTION_DIRECTION, BI_NOT_EMPTY);
+#endif
+                end_array();
+            }
+            break;
+        case VAConfigAttribMultipleFrame:
+            {
+                VAConfigAttribValMultipleFrame mf = { .value = value };
+                start_object("multiple_frame");
+                print_integer("max_num_concurrent_frames",
+                              mf.bits.max_num_concurrent_frames);
+                print_boolean("mixed_quality_level",
+                              mf.bits.mixed_quality_level);
+                end_object();
+            }
+            break;
+#endif
+#if LIBVA(2, 9, 0)
+        case VAConfigAttribContextPriority:
+            {
+                VAConfigAttribValContextPriority cp = { .value = value };
+                start_object("context_priority");
+                print_integer("priority", cp.bits.priority);
+                end_object();
+            }
+            break;
+#endif
+#if LIBVA(2, 11, 0)
+        case VAConfigAttribDecAV1Features:
+            {
+                VAConfigAttribValDecAV1Features daf = { .value = value };
+                start_object("dec_av1_features");
+                print_boolean("lst_support", daf.bits.lst_support);
+                end_object();
+            }
+            break;
+        case VAConfigAttribTEEType:
+            {
+                print_integer("tee_type", value);
+            }
+            break;
+        case VAConfigAttribTEETypeClient:
+            {
+                print_integer("tee_type_client", value);
+            }
+            break;
+        case VAConfigAttribProtectedContentCipherAlgorithm:
+            {
+                print_integer("protected_content_cipher_algorithm", value);
+            }
+            break;
+        case VAConfigAttribProtectedContentCipherBlockSize:
+            {
+                print_integer("protected_content_cipher_block_size", value);
+            }
+            break;
+        case VAConfigAttribProtectedContentCipherMode:
+            {
+                print_integer("protected_content_cipher_mode", value);
+            }
+            break;
+        case VAConfigAttribProtectedContentCipherSampleType:
+            {
+                print_integer("protected_content_cipher_sample_type", value);
+            }
+            break;
+        case VAConfigAttribProtectedContentUsage:
+            {
+                print_integer("protected_content_usage", value);
             }
             break;
 #endif
