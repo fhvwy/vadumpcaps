@@ -279,6 +279,13 @@ static struct {
     P(HEVCSccMain10,       "H.265 / MPEG-H part 2 (HEVC) SCC Screen-Extended Main 10 Profile"),
     P(HEVCSccMain444,      "H.265 / MPEG-H part 2 (HEVC) SCC Screen-Extended Main 4:4:4 Profile"),
 #endif
+#if LIBVA(2, 7, 0)
+    P(AV1Profile0,         "AV1 Main Profile"),
+    P(AV1Profile1,         "AV1 High Profile"),
+#endif
+#if LIBVA(2, 8, 0)
+    P(HEVCSccMain444_10,   "H.265 / MPEG-H part 2 (HEVC) SCC Screen-Extended Main 4:4:4 10 Profile"),
+#endif
 #undef P
 };
 
