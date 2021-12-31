@@ -1,6 +1,6 @@
 /*
- * vadumpcaps - Show all VAAPI capabilities.
- * Copyright (C) 2016-2018 Mark Thompson <sw@jkqxz.net>
+ * vadumpcaps - dump VAAPI capabilities for a device
+ * Copyright (C) 2016-2021 Mark Thompson <sw@jkqxz.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1945,10 +1945,43 @@ static void die(const char *format, ...)
     exit(1);
 }
 
+static void usage(const char *argv0)
+{
+    printf("vadumpcaps - dump VAAPI capabilities for a device\n"
+           "  Copyright (C) 2016-2021 Mark Thompson <sw@jkqxz.net>\n"
+           "Usage: %s [options]\n"
+           "Options:\n"
+           "  -h, --help                Show this information\n"
+           "  -i, --indent <number>     Set JSON indent size in spaces\n"
+           "  -u, --ugly                Do not pretty print JSON\n"
+           "  -d, --device <path>       Use specified device\n"
+           "                              Uses /dev/dri/renderD128 if not given\n"
+           "  -r, --driver <name>       Set driver name\n"
+           "                              Uses libva default if not given\n"
+           "Output selection options:\n"
+           "  -a, --all                 Dump all capabilities\n"
+           "  -p, --profiles            Dump profiles\n"
+           "  -e, --entrypoints         Dump entrypoints\n"
+           "  -t, --attributes          Dump attributes\n"
+           "  -s, --surface-formats     Dump surface formats\n"
+           "  -f, --filters             Dump filters\n"
+           "  -c, --filter-caps         Dump filter capabilities\n"
+           "  -l, --pipeline-caps       Dump pipeline capabilities\n"
+           "  -m, --image-formats       Dump image formats\n"
+           "  -b, --subpicture-formats  Dump subpicture formats\n"
+           "Some selections depend on others - entrypoint information can only be shown\n"
+           "if profiles are.  Driver information will always be shown.  If nothing is\n"
+           "selected, will show everything like --all.\n",
+           argv0);
+    exit(0);
+}
+
 int main(int argc, char **argv)
 {
     int option_index = 0;
     static struct option long_options[] = {
+        { "help",    no_argument,       0, 'h' },
+
         { "indent",  required_argument, 0, 'i' },
         { "ugly",    no_argument,       0, 'u' },
         { "device",  required_argument, 0, 'd' },
@@ -1965,7 +1998,7 @@ int main(int argc, char **argv)
         { "image-formats",      no_argument, 0, 'm' },
         { "subpicture-formats", no_argument, 0, 'b' },
     };
-    static const char *short_options = "i:ud:r:apetsfclmb";
+    static const char *short_options = "hi:ud:r:apetsfclmb";
 
     const char *drm_device = NULL;
     const char *driver_name = NULL;
@@ -1978,6 +2011,9 @@ int main(int argc, char **argv)
             break;
 
         switch (c) {
+        case 'h':
+            usage(argv[0]);
+            break;
         case 'i':
             sscanf(optarg, "%d", &indent_size);
             break;
