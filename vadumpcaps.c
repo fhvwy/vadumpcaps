@@ -346,6 +346,9 @@ static struct {
 #if LIBVA(2, 4, 0)
     F(HighDynamicRangeToneMapping),
 #endif
+#if LIBVA(2, 12, 0)
+    F(3DLUT),
+#endif
 #undef F
 };
 
@@ -370,6 +373,11 @@ static struct {
     F(FILTER_SCALING_FAST),
     F(FILTER_SCALING_HQ),
     F(FILTER_SCALING_NL_ANAMORPHIC),
+#if LIBVA(2, 9, 0)
+    F(FILTER_INTERPOLATION_NEAREST_NEIGHBOR),
+    F(FILTER_INTERPOLATION_BILINEAR),
+    F(FILTER_INTERPOLATION_ADVANCED),
+#endif
 #undef F
 };
 
@@ -499,6 +507,19 @@ static struct {
     M(HDR_TO_EDR),
     M(SDR_TO_HDR),
 #undef M
+};
+#endif
+
+#if LIBVA(2, 12, 0)
+static const struct {
+    int type;
+    const char *name;
+} tdlut_channel_types[] = {
+#define L(name) { VA_3DLUT_CHANNEL_ ## name, #name }
+    L(RGB_RGB),
+    L(YUV_RGB),
+    L(VUY_RGB),
+#undef L
 };
 #endif
 
@@ -1312,6 +1333,41 @@ static void dump_filter_caps(VADisplay display, VAContextID context,
         }
         break;
 #endif
+#if LIBVA(2, 12, 0)
+    case VAProcFilter3DLUT:
+        {
+            // No bound on number of LUT types, just ask for a lot of them.
+            VAProcFilterCap3DLUT lut[16];
+            unsigned int lut_count = ARRAY_LENGTH(lut);
+            memset(&lut, 0, sizeof(lut));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilter3DLUT,
+                                             &lut, &lut_count);
+            CHECK_VAS("Failed to query 3D LUT caps");
+
+            start_array("types");
+
+            for (j = 0; j < lut_count; j++) {
+                print_integer("lut_size", lut[j].lut_size);
+                start_array("lut_stride");
+                for (k = 0; k < 3; k++)
+                    print_integer(NULL, lut[j].lut_stride[k]);
+                end_array();
+                print_integer("bit_depth", lut[j].bit_depth);
+                print_integer("num_channel", lut[j].num_channel);
+                start_array("channel_mapping");
+                for (k = 0; k < ARRAY_LENGTH(tdlut_channel_types); k++) {
+                    if (lut[j].channel_mapping & tdlut_channel_types[k].type)
+                        print_string(NULL, tdlut_channel_types[k].name);
+                }
+                end_array();
+            }
+
+            end_array();
+        }
+        break;
+#endif
     default:
         {
             VAProcFilterCap cap;
@@ -1575,6 +1631,37 @@ static void dump_filter_pipelines(VADisplay display, VAContextID context,
                                      sizeof(param), 1,
                                      &param, &filter_buffer);
                 CHECK_VAS("Failed to create HDR tone mapping parameter buffer");
+            }
+        }
+        break;
+    case VAProcFilter3DLUT:
+        {
+            VAProcFilterCap3DLUT lut[16];
+            unsigned int lut_count = ARRAY_LENGTH(lut);
+            memset(&lut, 0, sizeof(lut));
+
+            vas = vaQueryVideoProcFilterCaps(display, context,
+                                             VAProcFilter3DLUT,
+                                             &lut, &lut_count);
+            CHECK_VAS("Failed to query 3D LUT caps");
+
+            if (lut_count > 0) {
+                VAProcFilterParameterBuffer3DLUT param = {
+                    .type = filter,
+                    .lut_surface     = VA_INVALID_ID,
+                    .lut_size        = lut[0].lut_size,
+                    .lut_stride[0]   = lut[0].lut_stride[0],
+                    .lut_stride[1]   = lut[0].lut_stride[1],
+                    .lut_stride[2]   = lut[0].lut_stride[2],
+                    .bit_depth       = lut[0].bit_depth,
+                    .num_channel     = lut[0].num_channel,
+                    .channel_mapping = 1 << (ffs(lut[0].channel_mapping) - 1),
+                };
+                vas = vaCreateBuffer(display, context,
+                                     VAProcFilterParameterBufferType,
+                                     sizeof(param), 1,
+                                     &param, &filter_buffer);
+                CHECK_VAS("Failed to create 3D LUT parameter buffer");
             }
         }
         break;
