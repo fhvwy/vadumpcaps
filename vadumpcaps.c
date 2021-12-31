@@ -201,7 +201,7 @@ static void print_string(const char *tag, const char *format, ...)
     print_newline();
 }
 
-static struct {
+static const struct {
     VAEntrypoint entrypoint;
     const char *name;
     const char *description;
@@ -231,7 +231,7 @@ static struct {
 #undef E
 };
 
-static struct {
+static const struct {
     VAProfile profile;
     const char *name;
     const char *description;
@@ -293,7 +293,7 @@ static struct {
 #undef P
 };
 
-static struct {
+static const struct {
     unsigned int value;
     const char *name;
 } rt_format_types[] = {
@@ -324,7 +324,7 @@ static struct {
 #undef R
 };
 
-static struct {
+static const struct {
     VAProcFilterType filter;
     const char *name;
 } filters[] = {
@@ -352,7 +352,7 @@ static struct {
 #undef F
 };
 
-static struct {
+static const struct {
     uint32_t flag;
     const char *name;
 } proc_pipeline_flags[] = {
@@ -381,7 +381,7 @@ static struct {
 #undef F
 };
 
-static struct {
+static const struct {
     VAProcDeinterlacingType type;
     const char *name;
 } deinterlacer_types[] = {
@@ -394,7 +394,7 @@ static struct {
 #undef D
 };
 
-static struct {
+static const struct {
     VAProcColorBalanceType type;
     const char *name;
 } colour_balance_types[] = {
@@ -411,7 +411,7 @@ static struct {
 };
 
 #if LIBVA(2, 1, 0)
-static struct {
+static const struct {
     VAProcTotalColorCorrectionType type;
     const char *name;
 } total_colour_correction_types[] = {
@@ -427,7 +427,7 @@ static struct {
 };
 #endif
 
-static struct {
+static const struct {
     VAProcColorStandardType type;
     const char *name;
 } colour_types[] = {
@@ -450,7 +450,7 @@ static struct {
 #undef C
 };
 
-static struct {
+static const struct {
     int type;
     const char *name;
 } rotation_types[] = {
@@ -463,7 +463,7 @@ static struct {
 };
 
 #if LIBVA(2, 1, 0)
-static struct {
+static const struct {
     int type;
     const char *name;
 } blend_types[] = {
@@ -474,7 +474,7 @@ static struct {
 #undef B
 };
 
-static struct {
+static const struct {
     int type;
     const char *name;
 } mirror_types[] = {
@@ -487,7 +487,7 @@ static struct {
 #endif
 
 #if LIBVA(2, 4, 0)
-static struct {
+static const struct {
     int type;
     const char *name;
 } hdr_metadata_types[] = {
@@ -497,7 +497,7 @@ static struct {
 #undef H
 };
 
-static struct {
+static const struct {
     int type;
     const char *name;
 } tone_mapping_types[] = {
