@@ -224,6 +224,10 @@ static struct {
 #if LIBVA(2, 1, 0)
     E(Stats,      "Stats"),
 #endif
+#if LIBVA(2, 11, 0)
+    E(ProtectedTEEComm, "Communicate with Trusted Execution Environment"),
+    E(ProtectedContent, "Decrypt Protected Content"),
+#endif
 #undef E
 };
 
