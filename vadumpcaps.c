@@ -1349,6 +1349,7 @@ static void dump_filter_caps(VADisplay display, VAContextID context,
             start_array("types");
 
             for (j = 0; j < lut_count; j++) {
+                start_object(NULL);
                 print_integer("lut_size", lut[j].lut_size);
                 start_array("lut_stride");
                 for (k = 0; k < 3; k++)
@@ -1362,6 +1363,7 @@ static void dump_filter_caps(VADisplay display, VAContextID context,
                         print_string(NULL, tdlut_channel_types[k].name);
                 }
                 end_array();
+                end_object();
             }
 
             end_array();
