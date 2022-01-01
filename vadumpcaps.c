@@ -201,32 +201,43 @@ static void print_string(const char *tag, const char *format, ...)
     print_newline();
 }
 
+enum {
+    EP_ATTRIBUTES = 1,
+    EP_SURFACES   = 2,
+    EP_FILTERS    = 4,
+};
+
 static const struct {
     VAEntrypoint entrypoint;
     const char *name;
     const char *description;
+    int flags;
 } entrypoints[] = {
-#define E(name, desc) { VAEntrypoint ## name, #name, desc }
-    E(VLD,        "Decode Slice"),
-    E(IZZ,        "(Legacy) ZigZag Scan"),
-    E(IDCT,       "(Legacy) Inverse DCT"),
-    E(MoComp,     "(Legacy) Motion Compensation"),
-    E(Deblocking, "(Legacy) Deblocking"),
-    E(EncSlice,   "Encode Slice"),
-    E(EncPicture, "Encode Picture"),
+#define E(name, desc, flags) { VAEntrypoint ## name, #name, desc, flags }
+    E(VLD,        "Decode Slice",             EP_ATTRIBUTES | EP_SURFACES),
+    E(IZZ,        "(Legacy) ZigZag Scan",     EP_ATTRIBUTES),
+    E(IDCT,       "(Legacy) Inverse DCT",     EP_ATTRIBUTES),
+    E(MoComp,     "(Legacy) Motion Compensation",
+                                              EP_ATTRIBUTES),
+    E(Deblocking, "(Legacy) Deblocking",      EP_ATTRIBUTES),
+    E(EncSlice,   "Encode Slice",             EP_ATTRIBUTES | EP_SURFACES),
+    E(EncPicture, "Encode Picture",           EP_ATTRIBUTES | EP_SURFACES),
 #if LIBVA(1, 7, 1)
-    E(EncSliceLP, "Encode Slice (Low Power)"),
+    E(EncSliceLP, "Encode Slice (Low Power)", EP_ATTRIBUTES | EP_SURFACES),
 #endif
-    E(VideoProc,  "Video Processing"),
+    E(VideoProc,  "Video Processing",
+                                 EP_FILTERS | EP_ATTRIBUTES | EP_SURFACES),
 #if LIBVA(2, 0, 0)
-    E(FEI,        "Flexible Encode"),
+    E(FEI,        "Flexible Encode",          EP_ATTRIBUTES | EP_SURFACES),
 #endif
 #if LIBVA(2, 1, 0)
-    E(Stats,      "Stats"),
+    E(Stats,      "Stats",                    EP_ATTRIBUTES),
 #endif
 #if LIBVA(2, 11, 0)
-    E(ProtectedTEEComm, "Communicate with Trusted Execution Environment"),
-    E(ProtectedContent, "Decrypt Protected Content"),
+    E(ProtectedTEEComm, "Communicate with Trusted Execution Environment",
+                                              EP_ATTRIBUTES),
+    E(ProtectedContent, "Decrypt Protected Content",
+                                              EP_ATTRIBUTES),
 #endif
 #undef E
 };
@@ -1792,30 +1803,32 @@ static void dump_entrypoints(VADisplay display, VAProfile profile)
 
         start_object(NULL);
 
+        unsigned int flags = EP_ATTRIBUTES;
+
         print_integer("entrypoint", entrypoint_list[i]);
         if (j < ARRAY_LENGTH(entrypoints)) {
             print_string("name", "%s", entrypoints[j].name);
             print_string("description", "%s", entrypoints[j].description);
+            flags = entrypoints[j].flags;
         }
 
         unsigned int rt_formats = 0;
 
-        if (DUMP(ATTRIBUTES)) {
+        if (DUMP(ATTRIBUTES) && (flags & EP_ATTRIBUTES)) {
             start_object("attributes");
             dump_config_attributes(display, profile, entrypoint_list[i],
                                    &rt_formats);
             end_object();
         }
 
-        if (DUMP(SURFACE_FORMATS) && rt_formats) {
+        if (DUMP(SURFACE_FORMATS) && (flags & EP_SURFACES)) {
             start_array("surface_formats");
             dump_surface_attributes(display, profile, entrypoint_list[i],
                                     rt_formats);
             end_array();
         }
 
-        if (DUMP(FILTERS) &&
-            entrypoint_list[i] == VAEntrypointVideoProc)
+        if (DUMP(FILTERS) && (flags & EP_FILTERS))
             dump_filters(display, rt_formats);
 
         end_object();
