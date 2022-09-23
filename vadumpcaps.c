@@ -1124,8 +1124,9 @@ static void dump_surface_attributes(VADisplay display,
                     const VADRMFormatModifierList *fml =
                         attr_list[i].value.value.p;
                     start_array("drm_format_modifiers");
-                    for (int j = 0; j < fml->num_modifiers; j++)
-                        print_integer(NULL, fml->modifiers[j]);
+                    if (fml)
+                        for (int j = 0; j < fml->num_modifiers; j++)
+                            print_integer(NULL, fml->modifiers[j]);
                     end_array();
                 }
                 break;
